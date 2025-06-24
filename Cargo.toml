@@ -1,0 +1,11 @@
+[package]
+name = "parking-game-fuzzer"
+version = "0.0.0"
+edition = "2024"
+
+publish = false
+license = "CC0-1"
+
+[dependencies]
+libafl = "0.15.3"
+parking-game = "0.1.0"
