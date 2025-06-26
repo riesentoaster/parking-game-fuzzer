@@ -1,0 +1,308 @@
+//! Feedbacks which assist in the solving of [`parking_game`] puzzles by interpreting data collected
+//! by the [`libafl::observers::Observer`] implementations in [`crate::observers`].
+
+use crate::input::PGInput;
+use crate::observers::{FinalStateObserver, ViewFrom, ViewObserver};
+use libafl::HasMetadata;
+use libafl::corpus::Testcase;
+use libafl::executors::ExitKind;
+use libafl::feedbacks::{Feedback, StateInitializer};
+use libafl_bolts::tuples::{Handle, Handled, MatchNameRef};
+use libafl_bolts::{Error, Named, impl_serdeany};
+use parking_game::{BoardValue, State};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
+use std::num::NonZeroUsize;
+
+/// Feedback which works out how far away obstacles are from each car, and which obstacles they are.
+pub struct ViewFeedback<T> {
+    obs: Handle<ViewObserver<T>>,
+}
+
+impl<T> ViewFeedback<T> {
+    /// Create a new [`ViewFeedback`] which will interpret from the provided [`ViewObserver`].
+    pub fn new(obs: &ViewObserver<T>) -> Self {
+        Self { obs: obs.handle() }
+    }
+}
+
+impl<S, T> StateInitializer<S> for ViewFeedback<T> {}
+
+impl<T> Named for ViewFeedback<T> {
+    fn name(&self) -> &Cow<'static, str> {
+        static NAME: Cow<'static, str> = Cow::Borrowed("pg_view_fb");
+        &NAME
+    }
+}
+
+/// Metadata which retains the view info collected by [`ViewFeedback`].
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ViewMetadata<T> {
+    views: Vec<ViewFrom<T>>,
+}
+
+impl<T> ViewMetadata<T> {
+    /// An iterator over what's viewable by each car. The objective car will be the first entry.
+    pub fn views(&self) -> impl Iterator<Item = (NonZeroUsize, &ViewFrom<T>)> {
+        self.views
+            .iter()
+            .enumerate()
+            .map(|(i, e)| (NonZeroUsize::new(i + 1).unwrap(), e))
+    }
+}
+
+impl_serdeany!(ViewMetadata<T: BoardValue + DeserializeOwned + Serialize + 'static>, <u8>, <u16>);
+
+impl<EM, OT, S, T> Feedback<EM, PGInput, OT, S> for ViewFeedback<T>
+where
+    OT: MatchNameRef,
+    T: BoardValue + DeserializeOwned + Serialize + 'static,
+{
+    fn is_interesting(
+        &mut self,
+        _state: &mut S,
+        _manager: &mut EM,
+        _input: &PGInput,
+        _observers: &OT,
+        _exit_kind: &ExitKind,
+    ) -> Result<bool, Error> {
+        // TODO smarter feedback?
+        Ok(false)
+    }
+
+    fn append_metadata(
+        &mut self,
+        _state: &mut S,
+        _manager: &mut EM,
+        observers: &OT,
+        testcase: &mut Testcase<PGInput>,
+    ) -> Result<(), Error> {
+        let obs = observers.get(&self.obs).unwrap();
+        testcase.add_metadata(ViewMetadata {
+            views: obs.views().map(|(_, e)| e).copied().collect(),
+        });
+        Ok(())
+    }
+}
+
+/// Feedback which stashes the final state of the board after execution by
+/// [`crate::executor::PGExecutor`].
+pub struct FinalStateFeedback<T> {
+    obs: Handle<FinalStateObserver<T>>,
+}
+
+impl<T> FinalStateFeedback<T> {
+    /// Create a new [`FinalStateFeedback`] which will collect the final state from the provided
+    /// [`FinalStateObserver`].
+    pub fn new(obs: &FinalStateObserver<T>) -> Self {
+        todo!("(pt.3) save the handle to the observer!")
+    }
+}
+
+impl<S, T> StateInitializer<S> for FinalStateFeedback<T> {}
+
+impl<T> Named for FinalStateFeedback<T> {
+    fn name(&self) -> &Cow<'static, str> {
+        static NAME: Cow<'static, str> = Cow::Borrowed("pg_state_fb");
+        &NAME
+    }
+}
+
+/// Metadata which holds the final state of the board after an execution of the associated testcase.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FinalStateMetadata<T> {
+    state: State<T>,
+}
+
+impl<T> FinalStateMetadata<T> {
+    /// The state contained within this metadata.
+    pub fn state(&self) -> &State<T> {
+        &self.state
+    }
+}
+
+impl_serdeany!(FinalStateMetadata<T: BoardValue + DeserializeOwned + Serialize + 'static>, <u8>, <u16>);
+
+impl<EM, OT, S, T> Feedback<EM, PGInput, OT, S> for FinalStateFeedback<T>
+where
+    OT: MatchNameRef,
+    T: BoardValue + DeserializeOwned + Serialize + 'static,
+{
+    fn is_interesting(
+        &mut self,
+        _state: &mut S,
+        _manager: &mut EM,
+        _input: &PGInput,
+        _observers: &OT,
+        _exit_kind: &ExitKind,
+    ) -> Result<bool, Error> {
+        todo!("(pt.3) indicate that this feedback did not find the testcase interesting")
+    }
+
+    fn append_metadata(
+        &mut self,
+        _state: &mut S,
+        _manager: &mut EM,
+        observers: &OT,
+        testcase: &mut Testcase<PGInput>,
+    ) -> Result<(), Error> {
+        todo!("(pt.3) get the observer, then create the metadata and save it to the testcase!")
+    }
+}
+
+/// Feedback which interprets the view data from [`ViewObserver`] to determine if the board is in a
+/// solved state (i.e., when the objective vehicle sees the wall).
+pub struct SolvedFeedback<T> {
+    obs: Handle<ViewObserver<T>>,
+}
+
+impl<T> SolvedFeedback<T> {
+    /// Create a [`SolvedFeedback`] which will interpret the result from the [`ViewObserver`].
+    pub fn new(obs: &ViewObserver<T>) -> Self {
+        Self { obs: obs.handle() }
+    }
+}
+
+impl<S, T> StateInitializer<S> for SolvedFeedback<T> {}
+
+impl<T> Named for SolvedFeedback<T> {
+    fn name(&self) -> &Cow<'static, str> {
+        static NAME: Cow<'static, str> = Cow::Borrowed("pg_solved");
+        &NAME
+    }
+}
+
+impl<EM, OT, S, T> Feedback<EM, PGInput, OT, S> for SolvedFeedback<T>
+where
+    OT: MatchNameRef,
+{
+    fn is_interesting(
+        &mut self,
+        _state: &mut S,
+        _manager: &mut EM,
+        _input: &PGInput,
+        observers: &OT,
+        _exit_kind: &ExitKind,
+    ) -> Result<bool, Error> {
+        // "the objective car sees the wall ahead of it" (i.e., no car between us and wall)
+        Ok(observers
+            .get(&self.obs)
+            .unwrap()
+            .views()
+            .next()
+            .unwrap()
+            .1
+            .forward()
+            .observed()
+            .is_none())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::feedbacks::SolvedFeedback;
+    use crate::input::PGInput;
+    use crate::observers::{PGObserverTuple, View, ViewObserver};
+    use libafl::events::SimpleEventManager;
+    use libafl::executors::ExitKind;
+    use libafl::feedbacks::Feedback;
+    use libafl::observers::ObserversTuple;
+    use libafl::state::NopState;
+    use libafl_bolts::tuples::tuple_list;
+    use parking_game::Direction;
+    use std::error::Error;
+
+    #[test]
+    fn simple_solved() -> Result<(), Box<dyn Error>> {
+        let initial = crate::parse_map::<u8>("oo...");
+        let obs = ViewObserver::<u8>::default();
+        let mut solved = SolvedFeedback::new(&obs);
+
+        let mut observers = tuple_list!(obs);
+
+        let mut state = NopState::<PGInput>::new();
+        let mut mgr = SimpleEventManager::<PGInput, _, NopState<PGInput>>::printing();
+
+        let nop_input = PGInput::new(vec![]);
+        observers.pre_exec_all(&mut state, &nop_input)?;
+        observers.final_board_all(&initial.board()?);
+        observers.post_exec_all(&mut state, &nop_input, &ExitKind::Ok)?;
+
+        assert!(solved.is_interesting(
+            &mut state,
+            &mut mgr,
+            &nop_input,
+            &observers,
+            &ExitKind::Ok
+        )?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn simple_unsolved() -> Result<(), Box<dyn Error>> {
+        let initial = crate::parse_map::<u8>("oo11.");
+        let obs = ViewObserver::<u8>::default();
+        let mut solved = SolvedFeedback::new(&obs);
+
+        let mut observers = tuple_list!(obs);
+
+        let mut state = NopState::<PGInput>::new();
+        let mut mgr = SimpleEventManager::<PGInput, _, NopState<PGInput>>::printing();
+
+        let nop_input = PGInput::new(vec![]);
+        observers.pre_exec_all(&mut state, &nop_input)?;
+        observers.final_board_all(&initial.board()?);
+        observers.post_exec_all(&mut state, &nop_input, &ExitKind::Ok)?;
+
+        assert!(!solved.is_interesting(
+            &mut state,
+            &mut mgr,
+            &nop_input,
+            &observers,
+            &ExitKind::Ok
+        )?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn example_observation() -> Result<(), Box<dyn Error>> {
+        let initial = crate::parse_map::<u8>(
+            r#"
+        ......
+        ......
+        ...2oo
+        .332.4
+        .5.2.4
+        .5.664
+        "#,
+        );
+        let obs = ViewObserver::<u8>::default();
+        let mut solved = SolvedFeedback::new(&obs);
+
+        let mut observers = tuple_list!(obs);
+
+        let mut state = NopState::<PGInput>::new();
+        let mut mgr = SimpleEventManager::<PGInput, _, NopState<PGInput>>::printing();
+
+        let nop_input = PGInput::new(vec![]);
+        observers.pre_exec_all(&mut state, &nop_input)?;
+        observers.final_board_all(&initial.board()?);
+        observers.post_exec_all(&mut state, &nop_input, &ExitKind::Ok)?;
+
+        let (_car, seen) = observers.0.views().next().unwrap();
+        assert_eq!(*seen.forward(), View::new(Direction::Right, None, 0));
+
+        assert!(solved.is_interesting(
+            &mut state,
+            &mut mgr,
+            &nop_input,
+            &observers,
+            &ExitKind::Ok
+        )?);
+
+        Ok(())
+    }
+}

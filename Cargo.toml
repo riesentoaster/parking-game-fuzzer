@@ -7,5 +7,10 @@ publish = false
 license = "CC0-1"
 
 [dependencies]
-num-traits = "0.2"
-parking-game = "0.1.0"
+libafl = "0.15.3"
+libafl_bolts = "0.15.3"
+parking-game = "0.1.1"
+serde = { version = "1.0", features = ["derive"] }
+
+[lints.rust]
+missing-docs = "warn"
