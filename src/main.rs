@@ -132,15 +132,18 @@ fn main() -> Result<(), Box<dyn Error>> {
     // TODO(pt.1): create a ViewObserver with ViewObserver::<u8>::default()
     // this creates a view observer for a map which is indexed by u8s
 
-    // TODO(pt.3): create a FinalStateObserver with its default method for a map indexed by u8s
+    // TODO(pt.1): create a FinalStateObserver with its default method for a map indexed by u8s
 
     // TODO(pt.1): create a feedback which will add an entry to the corpus if we see a new state
     //  - this feedback should first check that the target has **not** "crashed"
-    //  - then, we should check if this is a newly observed state by checking its hash
+    //  - iff so, we should check if this is a newly observed state by checking its hash
     //    - hint: look at https://docs.rs/libafl/latest/libafl/feedbacks/index.html
     //      - is there a feedback which checks for new hashes?
     //    - hint: check https://docs.rs/libafl/latest/libafl/index.html#macros for combining feedbacks
     //    - hint: check https://github.com/AFLplusplus/LibAFL/tree/main/fuzzers for examples
+    // TODO(pt.1): after implementing CrashRateFeedback, add it here at an appropriate place
+    //  - you should see a failure rate of >80% for tokyo1.map, >95% for tokyo36.map
+    //  - hint: consider the order of the feedback evaluation; where would be best to put this?
     // TODO(pt.2): make the feedback compatible with PGTailMutator
     //  - for the tail mutator to work, we need to stash the view data
     //  - what feedback does this? how do we combine it with the existing feedbacks?
@@ -164,15 +167,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         &mut objective,
     )?;
 
-    // TODO(pt.1): create a PGRandMutator
+    // TODO(pt.1): create a PGRandMutator with &init
     // TODO(pt.2): replace it with a PGTailMutator
 
     // TODO(pt.1): create an executor and pass your observers to it
-    //  - for pt.1, you only need to provide the view observer
-    //  - hint: in LibAFL, lists of differing types are provided with the `tuple_list` macro
+    //  - provide the view and final state observers
+    //  - hint: in LibAFL, lists of differing types are created with the `tuple_list` macro
     //    - extra: what does this macro do?
     //    - extra: why do we format lists of data of different types like this?
-    // TODO(pt.3): add the final state observer to the list of observers
 
     // TODO(pt.1): create a fuzzer which uses a queue scheduler and the provided feedback/objective
     //  - see: https://docs.rs/libafl/latest/libafl/fuzzer/struct.StdFuzzer.html
@@ -183,8 +185,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     //  - hint: look at https://docs.rs/libafl/latest/libafl/stages/index.html
     //    - is there a (concrete) type which does this? which is suitable for our use case?
     //  - hint: the stages are of differing types; how do we construct this for LibAFL?
-    // TODO(pt.2): update the stage to be compatible with PGTailMutator
-    //  - hint: how does the tail mutator work? what about the stage might be incompatible?
 
     // TODO(pt.1): simple printing manager; you can use alternatives if you want to try them out!
     // let mut mgr = SimpleEventManager::printing();

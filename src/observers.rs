@@ -7,15 +7,14 @@ use parking_game::{Board, BoardValue, Direction, Orientation, Position, State};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::iter;
 use std::num::NonZeroUsize;
 use std::ops::Deref;
 
 /// An [`Observer`] compatible with [`crate::executor::PGExecutor`].
 pub trait PGObserver<T> {
-    /// Passes the final board state to the observer, called after pre_exec and before post_exec if
-    /// the execution completes normally. Does nothing by default so this may be implemented easily
-    /// for existing observer types.
+    /// Passes the final board state to the observer, called after [`Observer::pre_exec`] and before
+    /// [`Observer::post_exec`] if the execution completes normally. Does nothing by default so this
+    /// may be implemented easily for existing observer types.
     #[allow(unused_variables)]
     fn final_board(&mut self, board: &Board<impl Deref<Target = State<T>>, T>) {
         // do nothing
@@ -23,15 +22,26 @@ pub trait PGObserver<T> {
 }
 
 /// Utility trait for marking [`libafl_bolts::tuples::tuple_list`]s as "all PG observers".
+///
+/// This is one of the ways that LibAFL ensures that different components of the fuzzer is
+/// compatible. When we have many components of differing types that we want to put together, we
+/// encode them in a _tuple list_, like `(a, (b, (c, ())))`. When encoded like this, we can check
+/// that the [generic bounds](https://doc.rust-lang.org/rust-by-example/generics/bounds.html) of
+/// every item in the list are upheld. This trait makes it possible to pass a board to all observers
+/// in a tuple list -- so long as all of `a`, `b`, and `c` all implement [`PGObserver`].
 pub trait PGObserverTuple<T> {
     /// Iterate all boards contained here and pass the provided board.
     fn final_board_all(&mut self, board: &Board<impl Deref<Target = State<T>>, T>);
 }
 
 impl<T> PGObserverTuple<T> for () {
-    fn final_board_all(&mut self, _board: &Board<impl Deref<Target = State<T>>, T>) {}
+    fn final_board_all(&mut self, _board: &Board<impl Deref<Target = State<T>>, T>) {
+        // this is the end of the list, so we're done
+    }
 }
 
+// Remember: the list looks like `(a, (b, (c, ())))`.
+// This effectively iterates over `a`, `b`, and `c`, executing their final_board implementations.
 impl<T, Head, Tail> PGObserverTuple<T> for (Head, Tail)
 where
     Head: PGObserver<T>,
@@ -204,6 +214,8 @@ impl<S, T> Observer<PGInput, S> for ViewObserver<T> {
     }
 }
 
+/// Returns the number of units that the car in this position could potentially move in the
+/// provided direction.
 fn step_until_seen<T: BoardValue>(
     board: &Board<impl Deref<Target = State<T>>, T>,
     from: Position<T>,
@@ -211,13 +223,16 @@ fn step_until_seen<T: BoardValue>(
 ) -> View<T> {
     // this is our car, and not an obstacle!
     let car = board.get(from).unwrap().unwrap();
-    let mut offset = T::zero();
+    let mut offset = match direction {
+        Direction::Up | Direction::Left => T::one(),
+        Direction::Down | Direction::Right => *board.state().cars()[car.get() - 1].1.length(),
+    };
+    let mut distance = T::zero();
     // TODO(pt.0): find the obstacle first encountered in the direction provided
     //  - hint: you can use `position.shift(...)` to get a position at a given offset
     //    - check return values for both `position.shift(...)` and `board.get(...)` for gotchas
-    //  - hint: you can increment offset with `offset += T::one()`
+    //  - hint: you can increment offset with `offset += T::one()`, likewise with distance
     //  - hint: an obstacle directly adjacent should be considered as zero units away
-    //  - you do not need to adjust for the car's length (this is handled for you)
     //  - this method is _extensively_ tested in simple_observation
     todo!("Implement as above!")
 }
@@ -233,8 +248,7 @@ where
                 Orientation::LeftRight => Direction::Left,
             };
 
-            let mut forward = step_until_seen(board, position, -backward);
-            forward.distance = forward.distance + T::one() - *car.length(); // distance ahead
+            let forward = step_until_seen(board, position, -backward);
             let backward = step_until_seen(board, position, backward);
 
             self.views.push(ViewFrom { backward, forward });
@@ -359,7 +373,7 @@ mod test {
             View {
                 direction: Direction::Up,
                 observed: None,
-                distance: 1
+                distance: 0
             }
         );
         assert_eq!(

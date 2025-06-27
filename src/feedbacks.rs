@@ -5,14 +5,17 @@ use crate::input::PGInput;
 use crate::observers::{FinalStateObserver, ViewFrom, ViewObserver};
 use libafl::HasMetadata;
 use libafl::corpus::Testcase;
+use libafl::events::{Event, EventFirer, EventWithStats, ExecStats};
 use libafl::executors::ExitKind;
 use libafl::feedbacks::{Feedback, StateInitializer};
+use libafl::monitors::stats::{AggregatorOps, UserStats};
 use libafl_bolts::tuples::{Handle, Handled, MatchNameRef};
-use libafl_bolts::{Error, Named, impl_serdeany};
+use libafl_bolts::{Error, Named, current_time, impl_serdeany};
 use parking_game::{BoardValue, State};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
 /// Feedback which works out how far away obstacles are from each car, and which obstacles they are.
@@ -196,6 +199,85 @@ where
             .forward()
             .observed()
             .is_none())
+    }
+}
+
+/// Feedback which measures and reports the crash rate of the executor.
+pub struct CrashRateFeedback;
+
+/// Metadata which tracks the crash rate of the fuzzer.
+///
+/// TODO(pt.1): add the necessary `#[derive(...)]` statements for metadata.
+pub struct CrashRateMetadata {
+    // TODO(pt.1): what fields do we need to track in the metadata?
+    //  - hint: do this while implementing CrashRateFeedback::is_interesting
+}
+
+// TODO(pt.1): other implementation details needed for the metadata
+
+impl<S> StateInitializer<S> for CrashRateFeedback
+where
+    S:, // TODO(pt.1): what traits do we require on the state (S)?
+{
+    fn init_state(&mut self, state: &mut S) -> Result<(), Error> {
+        todo!("(pt.1) add a default CrashRateMetadata to the state")
+    }
+}
+
+impl Named for CrashRateFeedback {
+    fn name(&self) -> &Cow<'static, str> {
+        todo!("(pt.1) give the feedback an appropriate name")
+    }
+}
+
+impl<EM, I, OT, S> Feedback<EM, I, OT, S> for CrashRateFeedback
+where
+    EM: EventFirer<I, S>,
+    S:, // TODO(pt.1) what traits do we require on the state (S)?
+{
+    fn is_interesting(
+        &mut self,
+        state: &mut S,
+        _manager: &mut EM,
+        _input: &I,
+        _observers: &OT,
+        exit_kind: &ExitKind,
+    ) -> Result<bool, Error> {
+        // TODO(pt.1) update the number of crashes observed so far
+        //  - get a mutable reference to the CrashRateMetadata from the state
+        //    - hint: you may need a turbofish: https://turbo.fish/
+        //  - update the number of crashes in metadata so far by checking exit_kind
+
+        Ok(false)
+    }
+
+    fn append_metadata(
+        &mut self,
+        state: &mut S,
+        manager: &mut EM,
+        _observers: &OT,
+        _testcase: &mut Testcase<I>,
+    ) -> Result<(), Error> {
+        // TODO(pt.1) get the crash metadata and execution counts
+        let crashes = 0;
+        let executions = 0;
+
+        manager.fire(
+            state,
+            EventWithStats::new(
+                Event::UpdateUserStats {
+                    name: self.name().clone(),
+                    value: UserStats::new(
+                        todo!("(pt.1) report the ratio of crashes to executions"),
+                        AggregatorOps::Avg, // if aggregated, report the average number
+                    ),
+                    phantom: PhantomData,
+                },
+                ExecStats::new(current_time(), executions),
+            ),
+        )?;
+
+        Ok(())
     }
 }
 

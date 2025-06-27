@@ -15,6 +15,8 @@ use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
 /// Randomly mutate the moves -- at any point with anything.
+///
+/// TODO(pt.1): explain PGRandMutator's weaknesses in a comment.
 pub struct PGRandMutator<T> {
     count: usize,
     phantom: PhantomData<T>,
@@ -54,7 +56,7 @@ where
         )
         .unwrap();
 
-        // TODO(pt.1): insert a random move at a random position
+        // TODO(pt.0): insert a random move at a random position
         //  - first, pick a random index in the moves using `state.rand_mut().below(...)`
         //  - second, pick a random direction using `state.rand_mut().choose(...)`
         //  - finally, insert the (car, direction) tuple at the generated index
@@ -69,7 +71,7 @@ where
 }
 
 /// Mutator which adds a _valid_ move to the end of the sequence. Only valid when used as the only
-/// mutator and when [`ViewMetadata`] is available on the mutated testcase.
+/// mutator and when [`crate::feedbacks::ViewMetadata`] is available on the mutated testcase.
 pub struct PGTailMutator<T> {
     phantom: PhantomData<T>,
 }
@@ -107,9 +109,8 @@ where
         //    - `drop(...)` the testcase after use so that you can mutably use the state again
         //  - finally, select from this list randomly with `state.rand_mut().choose(...)` and apply
         //    the mutation with `.push()` (potentially multiple times for `T > 1`)
-        //    - hint: use the hint above for loops involving `T`
 
-        Ok(MutationResult::Mutated)
+        todo!("Indicate that the input was mutated")
     }
 
     fn post_exec(&mut self, _state: &mut S, _new_corpus_id: Option<CorpusId>) -> Result<(), Error> {

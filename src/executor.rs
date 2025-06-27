@@ -28,6 +28,7 @@ impl<T, OT> PGExecutor<T, OT> {
     }
 }
 
+// This allows other components to interact with the executors observers, when necessary.
 impl<T, OT> HasObservers for PGExecutor<T, OT> {
     type Observers = OT;
 
@@ -53,6 +54,7 @@ where
         _mgr: &mut EM,
         input: &PGInput,
     ) -> Result<ExitKind, Error> {
+        // first: increment the executions for tracking how many times we've run so far
         *state.executions_mut() += 1;
 
         let (mut state, moves) = (|| {
@@ -69,8 +71,10 @@ where
             //    - the prefix of moves are the same
             //    - the returned sequence of moves is after that prefix (use the slice operator)
 
+            // create a local copy of the initial instance and get the moves we're about to apply
             Ok::<_, Error>((self.initial.clone(), input.moves()))
         })()?;
+        // load the game board from the state, or return an error if there's something wrong
         let mut board = state
             .board_mut()
             .map_err(|e| Error::illegal_state(e.to_string()))?;
@@ -78,10 +82,14 @@ where
         // TODO(pt.0): apply the moves in sequence
         //  - check the docs for how to apply moves to a board
         //    - see: https://docs.rs/parking-game/latest/parking_game/struct.Board.html
+        //  - if an error occurs during a move, return `Ok(ExitKind::Crash)`.
         // TODO(pt.3): add a microsecond delay *after each move* to simulate cost:
         // sleep(Duration::from_micros(1));
 
+        // send the final board to all the observers
         self.observers.final_board_all(&board);
+
+        // indicate successful execution
         Ok(ExitKind::Ok)
     }
 }
