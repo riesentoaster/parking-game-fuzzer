@@ -227,10 +227,66 @@ Review your implementation of executor.
 Our target is very fast -- several hundred thousand executions per second -- but this is not representative of real
 targets.
 Let's slow things down a bit.
+
 In [executor.rs](src/executor.rs), use the commented `sleep` call to insert an artificial delay of 1µs per move.
 By increasing the cost of the moves (which is more consistent with a real target), we see that our executions slow down
 over time as we have more moves per testcase.
 But, since we only mutate the tail of the input now, we are effectively wasting execution time on the common prefix.
 Can we resume from the last state that we executed?
 
-TODO
+To do this, add the FinalStateFeedback to your feedbacks in [main.rs](src/main.rs).
+This will save metadata that stashes the final state after an execution is completed.
+Implement this functionality in FinalStateFeedback by addressing the `TODO(pt.3)`s in [observers.rs](src/observers.rs).
+Then, all we need to do is load that state instead of the initial state in our executor.
+
+Load the snapshot from testcase metadata in your executor following the TODOs outlined
+in [executor.rs](src/executor.rs).
+Ensure that the moves that are executed after the snapshot are only those which were not already executed.
+
+After implementing this, you should notice that your performance once again shoots up -- probably by a few times.
+
+#### Investigating the speedup
+
+Remove the artificial delay from the previous section.
+You'll notice that the speedup is significantly less than previously observed -- to be expected, since we artificially
+inflated the execution time of moves.
+Keep this in mind for situations where snapshots are more expensive than simply resetting and running the whole input
+again.
+
+Moreover, we could only apply this optimization because of the unusual input scenario we are in: the input is processed
+one part at a time.
+This does happen in practice (e.g., with asynchronous embedded targets awaiting input from peripherals), but is
+generally rare.
+Snapshot fuzzing is not always the answer.
+
+### Exercise 4: Endgame
+
+Recall the implementation of PGTailMutator from earlier.
+Notice how we recompute the possible mutations every time.
+The number of valid mutations at any given state are not only finite -- they are few, and exactly computed by
+PGTailMutator.
+We can exhaust the whole mutation space at once and avoid redundant re-execution of mutations we've already observed.
+
+To do this, we will now implement a stage to replace the mutation stage that exhausts the input space without
+redundancy.
+To do so, we will loosely reimplement the logic from PGTailMutator, but we won't randomly choose, we will only ever take
+one step in any direction, and we won't execute with our old executor anymore.
+This is the most difficult task; take your time, and remember you can ask for
+help [in the discussions](https://github.com/addisoncrump/parking-game-fuzzer/discussions/categories/q-a).
+Follow the `TODO(pt.4)` sections from [stages.rs](src/stages.rs) to complete this task.
+Once completed, you can then replace the mutation stage in [main.rs](src/main.rs); you may need to reorder some
+statements to keep the borrow checker happy!
+
+### Exercise 5: Reflect
+
+Note that in part 4, we removed all randomness from the search.
+Is this still a fuzzer?
+Most people who build fuzzers would probably say no; there's no random element to the search!
+But, when did this stop being a fuzzer, exactly?
+I leave this last exercise to the reader.
+
+Nevertheless, there is a lesson here: fuzzing only makes sense when there is a clear guidance mechanism and when there
+is a need for randomness due to the enormity of the search space.
+Fuzzing is, fundamentally, just a randomized search process guided by (in most cases) novelty.
+So, when you're designing your fuzzers going forward, take the optimizations as they make themselves known to you -- but
+don't lose your exploration ability along the way.

@@ -6,6 +6,7 @@ pub mod feedbacks;
 pub mod input;
 pub mod mutators;
 pub mod observers;
+pub mod stages;
 
 use crate::input::PGInput;
 use libafl::corpus::{Corpus, InMemoryCorpus};
@@ -21,7 +22,7 @@ use std::{env, fs};
 /// Parses a map with the following rules:
 /// 1. Empty spaces are denoted with `.`.
 /// 2. The car which must be moved to the objective is referenced with `o`. This will be index 1.
-/// 3. All other cars are uniquely named. They will be indexed in lexographical order.
+/// 3. All other cars are uniquely named. They will be indexed in lexicographical order.
 /// 4. All cars are at least length 2.
 ///
 /// Any map not following this pattern is not guaranteed to be parsed correctly.
