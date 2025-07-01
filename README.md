@@ -69,11 +69,11 @@ Then, you will link together the fuzzer logic in [main.rs](src/main.rs) to fuzz 
 Already, this simple implementation will be able to solve most puzzles reasonably quickly, but you will develop extra
 feedback mechanisms that show that there are still opportunities for improved performance.
 
-In the last two parts, we explore deeper optimizations that have real-world correspondences to optimizations in certain
-targets.
+In the last remaining parts, we explore deeper optimizations that have real-world correspondences to optimizations in
+certain targets.
 First, you will improve your mutator to avoid "wasting" executions on invalid inputs.
 With this implemented, a new optimization becomes available: resumed execution, or snapshot fuzzing.
-The final exercise deals with the implementation of snapshot fuzzing, and discusses real-world correspondences.
+The final exercise deals with the optimization of snapshot fuzzing, and discusses real-world correspondences.
 
 ### Exercise 0: Components
 
