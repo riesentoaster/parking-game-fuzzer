@@ -93,7 +93,7 @@ Tasks for this section are denoted as comments in the code as `TODO(pt.0)` or as
 Make sure to review the other comments to get a better sense of what each part of the boilerplate does.
 If you ever get lost with what each component does, you can run `cargo doc --open` to get an overview of each.
 These may be implemented in any order, as the components are tested individually.
-Nevertheless, I recommend the implementing the components in the order listed below.
+Nevertheless, I recommend implementing the components in the order listed below.
 
 #### Executor
 
@@ -134,7 +134,7 @@ Once implemented successfully, the test `observers::test::distinguish_states` sh
 #### Objective
 
 Some observers and feedbacks are used for determining if an _objective_ has been reached rather than for guidance.
-An objective in classical fuzzing is simply a crash, but can be anything that represents that we want to find.
+An objective in classical fuzzing is simply a crash, but can be anything that represents what we want to find.
 In this case, our objective is to be able to drive the "objective car" out of the board.
 
 In this task, you need to implement ViewObserver -- an observer which measures what each car can see.
