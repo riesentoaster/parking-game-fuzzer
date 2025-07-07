@@ -83,7 +83,6 @@ where
         //        - invoke the on_evaluation callback of the fuzzer's scheduler
         //        - evaluate the execution with fuzzer
         //        - if the execution was a solution, return from the stage
-        //        - decrement the view's distance
         //        - truncate the input to its original size
         //        - undo the car shift by applying a shift to the same car in the negative direction
 
