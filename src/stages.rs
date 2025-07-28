@@ -1,19 +1,16 @@
 //! Custom stages for optimized solving of [`parking_game`] puzzles.
 
-use crate::feedbacks::{FinalStateMetadata, ViewMetadata};
 use crate::input::PGInput;
 use crate::observers::PGObserverTuple;
-use libafl::executors::{ExitKind, HasObservers};
+use libafl::executors::HasObservers;
 use libafl::feedbacks::Feedback;
 use libafl::observers::ObserversTuple;
-use libafl::schedulers::Scheduler;
 use libafl::stages::{Restartable, Stage};
 use libafl::state::{HasCurrentTestcase, HasExecutions};
-use libafl::{ExecutionProcessor, HasFeedback, HasMetadata, HasObjective, HasScheduler};
+use libafl::{ExecutionProcessor, HasFeedback, HasObjective, HasScheduler};
 use libafl_bolts::Error;
 use parking_game::{BoardValue, State};
 use std::marker::PhantomData;
-use std::ops::Deref;
 
 /// A stage implementation which exhausts the mutation space rather than randomly selecting
 /// mutations.
