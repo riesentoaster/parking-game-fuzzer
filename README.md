@@ -291,7 +291,10 @@ Fuzzing is, fundamentally, just a randomized search process guided by (in most c
 So, when you're designing your fuzzers going forward, take the optimizations as they make themselves known to you -- but
 don't lose your exploration ability along the way.
 
-## Addendum
+-----
+
+## Addendum 1: Using existing LibAFL input types
+
 - If you are building a fuzzer expecting composite inputs outside of this exercise, you may want take a look at
 [LibAFL's `ListInput`](https://github.com/AFLplusplus/LibAFL/blob/main/crates/libafl/src/inputs/list.rs). It provides
 additional functionality around interacting with and mutating such inputs.
